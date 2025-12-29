@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>LLM Inference Playground – Learn Fine-Tuning Concepts</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        background: #f3f6ff;
+        margin: 0;
+        padding: 0;
+      }
+      header {
+        background: #1f2a60;
+        color: white;
+        padding: 15px 20px;
+      }
+      section {
+        background: white;
+        padding: 15px;
+        margin: 10px;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+      h2 {
+        margin-top: 0;
+      }
+      label {
+        font-weight: bold;
+      }
+      input,
+      select,
+      textarea {
+        width: 100%;
+        padding: 8px;
+        margin: 6px 0 12px 0;
+        border-radius: 4px;
+        border: 1px solid #ccc;
+      }
+      textarea {
+        resize: vertical;
+        min-height: 70px;
+      }
+      button {
+        padding: 10px 14px;
+        border: none;
+        border-radius: 6px;
+        background: #1f2a60;
+        color: white;
+        cursor: pointer;
+      }
+      button:disabled {
+        background: gray;
+        cursor: not-allowed;
+      }
+      .status {
+        padding: 8px;
+        border-radius: 6px;
+        margin-top: 8px;
+      }
+      .success {
+        background: #d3f9d8;
+        color: #055a12;
+      }
+      .error {
+        background: #ffd5d5;
+        color: #7a0000;
+      }
+      .row {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+      .col {
+        flex: 1 1 250px;
+      }
+      .output {
+        background: #0b152f;
+        color: #aee0ff;
+        border-radius: 6px;
+        padding: 10px;
+        min-height: 120px;
+        white-space: pre-wrap;
+        overflow-y: auto;
+      }
+      footer {
+        background: white;
+        margin: 10px;
+        padding: 10px;
+        border-radius: 6px;
+      }
+      .small {
+        font-size: 12px;
+        color: #444;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>LLM Inference Playground – Understand “Fine-Tuning-Like” Behavior</h1>
+      <p>
+        Runs fully in your browser. No backend. Learn how temperature, top-p,
+        top-k & instructions change behavior.
+      </p>
+    </header>
+    <section>
+      <h2>🔐 API Key Setup</h2>
+      <label>Enter Gemini API Key</label>
+      <input id="apiKey" type="password" placeholder="Your API Key" />
+      <button id="validateBtn">Validate API Key</button>
+      <div id="apiStatus" class="status"></div>
+      <p class="small">
+        Validation tries to fetch available models. Sometimes listing works even
+        when text generation later fails. Don’t worry — the UI will explain
+        problems clearly and never break.
+      </p>
+    </section>
+    <section>
+      <h2>🧠 Model Selection</h2>
+      <select id="modelSelect" disabled></select>
+      <div id="modelInfo" class="small"></div>
+    </section>
+    <section>
+      <h2>🎭 Response Style</h2>
+      <div>
+        <label
+          ><input type="radio" name="preset" value="innovative" /> Innovative
+          Thinker</label
+        ><br />
+        <label
+          ><input type="radio" name="preset" value="precise" /> Factual &
+          Precise</label
+        ><br />
+        <label
+          ><input type="radio" name="preset" value="kid" /> Funny Kid (8–10
+          years old)</label
+        ><br />
+        <label
+          ><input type="radio" name="preset" value="pm" /> Informed Product
+          Manager</label
+        ><br />
+        <label
+          ><input type="radio" name="preset" value="facts" /> No-Nonsense Fact
+          Teller</label
+        ><br />
+        <label
+          ><input type="radio" name="preset" value="custom" /> Custom</label
+        >
+      </div>
+    </section>
+    <section>
+      <h2>🎛️ Model Controls (Inference Tuning)</h2>
+      <div class="row">
+        <div class="col">
+          Temperature
+          <input type="range" id="tempSlider" min="0" max="1.5" step="0.05" />
+          <input type="number" id="tempNum" min="0" max="1.5" step="0.05" />
+          <p class="small">
+            Temperature controls creativity. Lower = safer & predictable. Higher
+            = more creative & risky.
+          </p>
+        </div>
+        <div class="col">
+          Top-P
+          <input type="range" id="toppSlider" min="0" max="1" step="0.01" />
+          <input type="number" id="toppNum" min="0" max="1" step="0.01" />
+          <p class="small">
+            Top-P limits how many “likely next words” are considered based on
+            probability mass.
+          </p>
+        </div>
+        <div class="col">
+          Top-K
+          <input type="range" id="topkSlider" min="1" max="100" step="1" />
+          <input type="number" id="topkNum" min="1" max="100" step="1" />
+          <p class="small">
+            Top-K limits the number of candidate tokens the model may choose
+            from each step.
+          </p>
+        </div>
+        <div class="col">
+          Max Output Tokens
+          <input type="range" id="maxSlider" min="50" max="2048" step="10" />
+          <input type="number" id="maxNum" min="50" max="2048" step="10" />
+        </div>
+      </div>
+    </section>
+    <section>
+      <h2>🧠 Instruction & Prompt</h2>
+      <label>System / Instruction Prompt</label>
+      <textarea id="systemPrompt"></textarea>
+
+      <label>User Prompt</label>
+
+      <textarea id="userPrompt"></textarea>
+
+      <button id="runBtn" disabled>Run Prompt</button>
+    </section>
+    <section>
+      <h2>📤 Model Output</h2>
+      <div id="output" class="output"></div>
+      <div id="stats" class="small"></div>
+    </section>
+    <footer>
+      <h2>📘 Understanding Fine-Tuning (Simple Explanation)</h2>
+      <p>
+        <b>Temperature</b> = Creativity dial. Like telling a storyteller to
+        “stick to facts” vs “be wild & imaginative”.
+      </p>
+      <p>
+        <b>Top-P</b> and <b>Top-K</b> = Control how many word choices the model
+        considers. Fewer choices = safer output.
+      </p>
+      <p>
+        This playground is NOT real fine-tuning. You are not training the model.
+        You are just steering behavior during inference.
+      </p>
+      <p><b>Prompt Engineering</b> = Writing better instructions.</p>
+      <p>
+        <b>Inference Tuning</b> = Changing temperature / top-p / top-k to
+        control behavior.
+      </p>
+      <p>
+        <b>Real Fine-Tuning</b> = Giving thousands of examples and retraining so
+        the model permanently learns a style.
+      </p>
+      <p>
+        <b>API Keys</b> = Like passwords. They unlock usage. Never share them
+        publicly.
+      </p>
+    </footer>
+    <script>
+      let apiKey = "";
+      let validated = false;
+      let models = [];
+      const fallbackModels = [
+        "gemini-1.5-flash",
+        "gemini-pro",
+        "gemini-1.5-flash-latest",
+      ];
+      function setStatus(el, text, type) {
+        el.className = "status " + type;
+        el.textContent = text;
+      }
+      document.getElementById("validateBtn").onclick = async () => {
+        apiKey = document.getElementById("apiKey").value.trim();
+        const status = document.getElementById("apiStatus");
+        if (!apiKey) {
+          setStatus(
+            status,
+            "API Key missing. Please enter a valid key.",
+            "error"
+          );
+          return;
+        }
+        setStatus(status, "Validating...", "");
+        try {
+          const res = await fetch(
+            "https://generativelanguage.googleapis.com/v1beta/models?key=" +
+              apiKey
+          );
+          if (!res.ok) throw new Error("Request failed");
+          const data = await res.json();
+          models = (data.models || []).filter(
+            (m) =>
+              m.supportedGenerationMethods &&
+              m.supportedGenerationMethods.includes("generateContent")
+          );
+          if (models.length === 0)
+            throw new Error("No usable text models found.");
+          const select = document.getElementById("modelSelect");
+          select.innerHTML = "";
+          models.forEach((m) => {
+            const o = document.createElement("option");
+            o.value = m.name;
+            o.textContent = m.displayName || m.name;
+            select.appendChild(o);
+          });
+          select.disabled = false;
+          validated = true;
+          document.getElementById("runBtn").disabled = false;
+          setStatus(status, "API Key Valid ✔", "success");
+        } catch (e) {
+          validated = false;
+          setStatus(
+            status,
+            "Validation failed. Possible reasons: Wrong key, network issue, or quota problem.",
+            "error"
+          );
+        }
+      };
+      function sync(a, b) {
+        a.oninput = () => (b.value = a.value);
+        b.oninput = () => (a.value = b.value);
+      }
+      sync(tempSlider, tempNum);
+      sync(toppSlider, toppNum);
+      sync(topkSlider, topkNum);
+      sync(maxSlider, maxNum);
+      function applyPreset(p) {
+        const sp = document.getElementById("systemPrompt");
+        if (p === "innovative") {
+          tempSlider.value = tempNum.value = 1.2;
+          toppSlider.value = toppNum.value = 0.9;
+          topkSlider.value = topkNum.value = 50;
+          sp.value =
+            "You are a highly creative thinker. Offer imaginative, innovative and surprising ideas with clarity.";
+        } else if (p === "precise") {
+          tempSlider.value = tempNum.value = 0.2;
+          toppSlider.value = toppNum.value = 0.7;
+          topkSlider.value = topkNum.value = 20;
+          sp.value =
+            "Provide accurate, concise, factual answers with minimal fluff and high reliability.";
+        } else if (p === "kid") {
+          tempSlider.value = tempNum.value = 1.0;
+          toppSlider.value = toppNum.value = 0.95;
+          topkSlider.value = topkNum.value = 60;
+          sp.value =
+            "Speak like a funny 9-year-old kid. Simple words, humor, excitement, and friendliness.";
+        } else if (p === "pm") {
+          tempSlider.value = tempNum.value = 0.6;
+          toppSlider.value = toppNum.value = 0.8;
+          topkSlider.value = topkNum.value = 40;
+          sp.value =
+            "You are a knowledgeable Product Manager. Explain logically, structure thoughts and link to business value.";
+        } else if (p === "facts") {
+          tempSlider.value = tempNum.value = 0.1;
+          toppSlider.value = toppNum.value = 0.5;
+          topkSlider.value = topkNum.value = 10;
+          sp.value =
+            "State only facts in a serious and direct tone. Avoid opinions or humor.";
+        }
+      }
+      document.querySelectorAll("input[name='preset']").forEach((r) => {
+        r.onchange = () => applyPreset(r.value);
+      });
+      document.querySelector("input[value='innovative']").checked = true;
+      applyPreset("innovative");
+      document.getElementById("runBtn").onclick = async () => {
+        if (!validated) {
+          alert("Validate API key first.");
+          return;
+        }
+        const out = document.getElementById("output");
+        const stats = document.getElementById("stats");
+        const user = document.getElementById("userPrompt").value.trim();
+        if (!user) {
+          out.textContent =
+            "You didn't provide a user prompt. Try typing something!";
+          return;
+        }
+        let model =
+          document.getElementById("modelSelect").value || fallbackModels[0];
+        const system = document.getElementById("systemPrompt").value;
+        const temp = parseFloat(tempNum.value);
+        const topp = parseFloat(toppNum.value);
+        const topk = parseInt(topkNum.value);
+        const max = parseInt(maxNum.value);
+        out.textContent = "Generating...";
+        const start = performance.now();
+        async function tryModel(m) {
+          try {
+            const res = await fetch(
+              `https://generativelanguage.googleapis.com/v1beta/${m}:generateContent?key=${apiKey}`,
+              {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  contents: [
+                    { role: "system", parts: [{ text: system }] },
+                    { role: "user", parts: [{ text: user }] },
+                  ],
+                  generationConfig: {
+                    temperature: temp,
+                    topP: topp,
+                    topK: topk,
+                    maxOutputTokens: max,
+                  },
+                }),
+              }
+            );
+            if (!res.ok) throw new Error("API rejected request");
+            const data = await res.json();
+            if (data?.candidates?.[0]?.content?.parts?.[0]?.text) {
+              return data.candidates[0].content.parts[0].text;
+            }
+            throw new Error("Empty response");
+          } catch (e) {
+            return null;
+          }
+        }
+        let text = await tryModel(model);
+        let usedModel = model;
+        if (!text) {
+          for (let fm of fallbackModels) {
+            text = await tryModel("models/" + fm);
+            if (text) {
+              usedModel = fm;
+              break;
+            }
+          }
+        }
+        const end = performance.now();
+        if (!text) {
+          out.textContent =
+            "The model could not generate text.\nCommon reasons:\n• Model is not enabled for your account\n• Quota exceeded\n• Network or permission issue\nTry: different model, lower parameters, or check billing.";
+          stats.textContent = "";
+          return;
+        }
+        out.textContent = text;
+        stats.textContent = `Latency: ${(end - start).toFixed(
+          1
+        )} ms | Model Used: ${usedModel}`;
+      };
+    </script>
+  </body>
+</html>
